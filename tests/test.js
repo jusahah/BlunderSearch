@@ -19,16 +19,10 @@ var processGames = require('../engineLayer/entry')({
 	streaming: false // Results streamed back one-by-one or in one big batch?
 });
 
-// How I want the engine layer API to be used? Like this:
-
-// Interface:
-//engineLayer.processGames(pgnText, options, resultsCb);
-
+// How I want the engine layer API to be used? The example below.
+// First get the text containing pgn games
 var testGamesPGNText = fs.readFileSync(__dirname + "/testgames.pgn", "utf8");
-console.log(testGamesPGNText);
-
-
-
+// Send the text string to our component's entry function
 processGames(testGamesPGNText, function(err, resultsBatch) {
 	if (err) throw err;
 	console.log(resultsBatch);
