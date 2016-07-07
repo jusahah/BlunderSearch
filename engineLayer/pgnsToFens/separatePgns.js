@@ -67,7 +67,7 @@ function parsePgns(pgnsText) {
 	});
 
 	return {
-		games: _.filter(gamePgns, function(pgn) {return !!pgn}),
+		games: _.compact(gamePgns),
 		failed: failCount
 	}
 
