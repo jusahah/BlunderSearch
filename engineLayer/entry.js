@@ -31,22 +31,15 @@ module.exports = function(options) {
 			//console.log(_.map(allPositions, function(p) {return p.movenum}));
 			//kkk;
 			var toBeAnalyzed = _.filter(allPositions, function(position) {
-				return position.movenum >= 5 && position.movenum <= 10;
+				return position.movenum >= 1 && position.movenum <= 10;
 			});
 			console.log("Position count: " + toBeAnalyzed.length);
 			return toBeAnalyzed;
 		})
-		.map(function(singlePosition) {
-			// Analyze each position 
-			console.log(singlePosition);
-			return analyzePosition(
-				singlePosition.fen, 
-				singlePosition.movenum, 
-				singlePosition.fromgame
-			);
-		}, {concurrency: 2})
+		.map(analyzePosition, {concurrency: 2})
 		.then(function(results) {
 			console.log("Analyzed: " + results.length);
+			console.log(results);
 			// Pack positions back into games
 			var groupedIntoGames = _.groupBy(results, function(result) { 
 				return result.fromgame
@@ -55,30 +48,40 @@ module.exports = function(options) {
 				return _.sortBy(positions, function(p) { return p.movenum})
 			});
 
-			console.log(groupedIntoGames);
+			
 
 		})
 		.then(function(groupedIntoGames) {
+			console.log(groupedIntoGames);
 			return _.mapValues(groupedIntoGames, function(positions) {
 				if (!positions || positions.length < 2) return [];
-				var currEval = parseFloat(positions[0].eval);
-				var foundMistakes = [];
+				var currPosition = positions[0];
 
-				_.each(_.tail(positions), function(position) {
-					var thisEval = parseFloat(position.eval);
-					var evalDiff = Math.abs(thisEval - currEval);
-					if (evalDiff > 0.90) {
+				return _.compact(_.map(_.tail(positions), function(position) {
+					var thisEval = parseFloat(position.evaluation);
+					var evalDiff = Math.abs(thisEval - parseFloat(currPosition.evaluation));
+
+					var oldFen = currPosition.fen;
+					currPosition = position;
+
+					if (evalDiff > 1.90) {
 						// Mistake found
-						foundMistakes.push({
+						return {
+							fenBefore: oldFen,
+							fenAfter: position.fen,
 							movenum: position.movenum,
-							evalDiff: evalDiff
-						});
+							evalDiff: evalDiff,
+							playedMove: position.move,
+							bestMove: position.bestmove
+						};
 					}
 
-					currEval = parseFloat(position.eval);
-				});
+					return null;
 
-				return foundMistakes;
+					
+				}));
+
+				
 
 
 			});

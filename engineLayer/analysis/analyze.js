@@ -2,16 +2,12 @@ var Promise = require('bluebird');
 var _ = require('lodash');
 var spawn = require('child_process').spawn;
 
-function fakeAnalysis(fen, movenum, fromgame) {
+function fakeAnalysis(fen) {
 	return new Promise(function(resolve, reject) {
 		setTimeout(function() {
 			resolve({
-				fen: fen,
-				movenum: movenum,
-				fromgame: fromgame,
-				eval: (2 - (Math.random() * 4)).toFixed(2),
-				bestmove: 'a2a3',
-				depth: 16
+				evaluation: (2 - (Math.random() * 4)).toFixed(2),
+				bestmove: 'a2a4'
 			});
 		}, Math.random()*50 + 100);
 	});
@@ -19,7 +15,7 @@ function fakeAnalysis(fen, movenum, fromgame) {
 
 function realAnalysis(fen, depth) {
 	return new Promise(function(resolve, reject) {
-		startAnalysis(fen,depth, resolve, reject);
+		startAnalysis(fen, depth, resolve, reject);
 	});
 
 }
@@ -93,11 +89,26 @@ function startAnalysis(fen, movenum, fromgame, successCb, errorCb) {
 }
 
 
-module.exports = function(fen, movenum, fromgame) {
+module.exports = function(position) {
 
-	if (process.env.NODE_ENV === 'production') {
-		return realAnalysis(fen, movenum, fromgame);
-	} 
-	return fakeAnalysis(fen, movenum, fromgame);
+	console.log("ANALYSING POS");
+	console.log(position);
+
+	return new Promise(function(resolve, reject) {
+		var decoratePosition = function(evalInfo) {
+			return resolve(_.assign({
+				evaluation: evalInfo.evaluation, 
+				bestmove: evalInfo.bestmove
+			}, position));
+		};
+
+		if (process.env.NODE_ENV === 'production') {
+			return realAnalysis(position.fen).then(decoratePosition);
+		} 
+
+		fakeAnalysis(position.fen).then(decoratePosition);
+	});
+
+
 
 }
