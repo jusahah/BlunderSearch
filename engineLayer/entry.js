@@ -3,7 +3,7 @@ var _ = require('lodash');
 var uuid = require('node-uuid');
 
 var pgnsToFens = require('./pgnsToFens/processPgns');
-var analyzePosition = require('./analysis/analyze');
+var analyzePosition = require('./analysis/analyze')(6 * 1000 /* Movetime */);
 
 module.exports = function(options) {
 	// Returns Promise
@@ -31,12 +31,12 @@ module.exports = function(options) {
 			//console.log(_.map(allPositions, function(p) {return p.movenum}));
 			//kkk;
 			var toBeAnalyzed = _.filter(allPositions, function(position) {
-				return position.movenum >= 1 && position.movenum <= 10;
+				return position.movenum >= 10 && position.movenum <= 30;
 			});
 			console.log("Position count: " + toBeAnalyzed.length);
 			return toBeAnalyzed;
 		})
-		.map(analyzePosition, {concurrency: 2})
+		.map(analyzePosition, {concurrency: 4} /*Num of parallel engine instances to use?*/)
 		.then(function(results) {
 			console.log("Analyzed: " + results.length);
 			console.log(results);
@@ -62,17 +62,23 @@ module.exports = function(options) {
 					var evalDiff = Math.abs(thisEval - parseFloat(currPosition.evaluation));
 
 					var oldFen = currPosition.fen;
+					var oldBest = currPosition.bestmove;
+					var oldEval = currPosition.evaluation;
+
+					// Replace old with the current for next loop run
 					currPosition = position;
 
-					if (evalDiff > 1.90) {
+					if (evalDiff > 25) {
 						// Mistake found
 						return {
 							fenBefore: oldFen,
 							fenAfter: position.fen,
+							evalBefore: oldEval,
+							evalAfter: position.evaluation,
 							movenum: position.movenum,
 							evalDiff: evalDiff,
 							playedMove: position.move,
-							bestMove: position.bestmove
+							bestMove: oldBest
 						};
 					}
 
@@ -85,7 +91,10 @@ module.exports = function(options) {
 
 
 			});
-		});
+		}).catch(function(err) {
+			console.log(err);
+			throw err;
+		})
 
 
 

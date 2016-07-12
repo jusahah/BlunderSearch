@@ -13,17 +13,18 @@ function fakeAnalysis(fen) {
 	});
 }
 
-function realAnalysis(fen, depth) {
+function realAnalysis(fen, movetime) {
+	movetime = _.clamp((movetime || 5000), 1000, 30000);
 	return new Promise(function(resolve, reject) {
-		startAnalysis(fen, depth, resolve, reject);
+		startAnalysis(fen, movetime, resolve, reject);
 	});
 
 }
 
 
-function startAnalysis(fen, movenum, fromgame, successCb, errorCb) {
+function startAnalysis(fen, movetime, successCb, errorCb) {
 	// Depth between 16 and 24, default is 22
-	var depth = 16;
+	var depth = 20; // Not in use for now
 	var stockfish = spawn('stockfish');
 	var lastStartTime;
 	var currentEval = '?';
@@ -63,52 +64,58 @@ function startAnalysis(fen, movenum, fromgame, successCb, errorCb) {
 	});
 
 	function analysisDone(evaluation, bestmove) {
-		console.log("Fen analysis over");
+		console.log("Fen analysis over: " + fen);
 		stockfish.stdin.end();
-		setTimeout(function() {
-			successCb({
-				fen: fen,
-				movenum: movenum,
-				fromgame: fromgame,
-				eval: evaluation,
-				bestmove: bestmove,
-				depth: depth
-			});
-		}, 0)
+		
+		successCb({
+			fen: fen,
+			bestmove: bestmove,
+			evaluation: standardizeToWhite(fen, evaluation)
+		});
+		
+	}
+
+	function standardizeToWhite(fen, evaluation) {
+		if (fen.split(" ")[1] === 'b') return evaluation * (-1);
+		return evaluation * 1; // Cast to number
 	}
 
 	function launch() {
-		var movetime = Math.floor(Math.random()*1500) + 2000;
+		console.log("Launching with: " + fen);
+
 		stockfish.stdin.write('ucinewgame\n');
 		stockfish.stdin.write('position fen ' + fen + '\n');
 		stockfish.stdin.write('go movetime ' + movetime + '\n');			
 	}
 
-	setTimeout(launch, 0);
+	setTimeout(launch, 0); // Let the call stack empty first for peace of mind?
 
 }
 
+// Factory taking in movetime and returning analysis function
+module.exports = function(movetime) {
 
-module.exports = function(position) {
+	return function(position) {
 
-	console.log("ANALYSING POS");
-	console.log(position);
+		console.log("INITING ANALYSIS FOR POS: " + position.fen);
+		//console.log(position);
 
-	return new Promise(function(resolve, reject) {
-		var decoratePosition = function(evalInfo) {
-			return resolve(_.assign({
-				evaluation: evalInfo.evaluation, 
-				bestmove: evalInfo.bestmove
-			}, position));
-		};
+		return new Promise(function(resolve, reject) {
+			var decoratePosition = function(evalInfo) {
+				return resolve(_.assign({
+					evaluation: evalInfo.evaluation, 
+					bestmove: evalInfo.bestmove
+				}, position));
+			};
 
-		if (process.env.NODE_ENV === 'production') {
-			return realAnalysis(position.fen).then(decoratePosition);
-		} 
+			if (process.env.NODE_ENV === 'production') {
+				return realAnalysis(position.fen, movetime).then(decoratePosition);
+			} 
 
-		fakeAnalysis(position.fen).then(decoratePosition);
-	});
+			fakeAnalysis(position.fen).then(decoratePosition);
+		});
 
 
 
+	}
 }
