@@ -23,7 +23,7 @@ var processGames = require('../engineLayer/entry')({
 // First get the text containing pgn games
 var testGamesPGNText = fs.readFileSync(__dirname + "/testgames.pgn", "utf8");
 // Send the text string to our component's entry function
-processGames(testGamesPGNText, function(err, resultsBatch) {
-	if (err) throw err;
-	console.log(resultsBatch);
+processGames(testGamesPGNText).then(function(finalResults) {
+	console.log("FINAL RESULTS");
+	console.log(finalResults);
 });

@@ -13,7 +13,7 @@ function fakeAnalysis(fen, movenum, fromgame) {
 				bestmove: 'a2a3',
 				depth: 16
 			});
-		}, Math.random()*50 + 1000);
+		}, Math.random()*50 + 100);
 	});
 }
 
